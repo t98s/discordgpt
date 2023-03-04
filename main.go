@@ -90,29 +90,69 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	res, err := gpt.CreateChatCompletion(context.Background(), gpt.ChatCompletionReq{
-		Model: "gpt-3.5-turbo",
-		Messages: []gpt.Message{
-			{
-				Role: gpt.MessageRoleSystem,
-				Content: `
-				あなたにはDiscord内のChatbotとしてユーザーと会話をしてもらいます。
-				以下の制約条件を厳密に守って会話を行ってください。 
-
-				- セクシャルな話題に関しては誤魔化してください
-				- なるべくシンプルな会話を心がけてください
-				- 適宜、会話にジョークを交えてください
-				`,
-			},
-			{
-				Role:    gpt.MessageRoleUser,
-				Content: m.Content,
-			},
+	replyTree, _ := getReplyTree(s, m.ChannelID, m.ID)
+	messagesForGpt := []gpt.Message{
+		{
+			Role: gpt.MessageRoleSystem,
+			Content: `
+			あなたにはDiscord内のChatbotとしてユーザーと会話をしてもらいます。
+			以下の制約条件を厳密に守って会話を行ってください。
+			
+			- セクシャルな話題に関しては誤魔化してください
+			- なるべくシンプルな会話を心がけてください
+			- 適宜、会話にジョークを交えてください
+			`,
 		},
+	}
+	for i, discordMessage := range replyTree {
+		var role string
+
+		// ここもうちょっと綺麗に書きたいね〜
+		if i%2 == 0 {
+			role = gpt.MessageRoleUser
+			if discordMessage.Author.Bot {
+				s.ChannelMessageSend(m.ChannelID, "エラー: リプライは交互に行うようにしてください")
+				return
+			}
+		} else {
+			role = gpt.MessageRoleAssistant
+			if !discordMessage.Author.Bot {
+				s.ChannelMessageSend(m.ChannelID, "エラー: リプライは交互に行うようにしてください")
+				return
+			}
+		}
+
+		messagesForGpt = append(messagesForGpt, gpt.Message{
+			Role:    role,
+			Content: discordMessage.Content,
+		})
+	}
+
+	res, err := gpt.CreateChatCompletion(context.Background(), gpt.ChatCompletionReq{
+		Model:    "gpt-3.5-turbo",
+		Messages: messagesForGpt,
 	})
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("エラーが発生しました: %s", err.Error()))
 		return
 	}
-	s.ChannelMessageSend(m.ChannelID, strings.TrimSpace(res.Choices[0].Message.Content))
+
+	s.ChannelMessageSendReply(m.ChannelID, strings.TrimSpace(res.Choices[0].Message.Content), m.Reference())
+}
+
+func getReplyTree(s *discordgo.Session, channelID, messageID string) ([]*discordgo.Message, error) {
+	var messages []*discordgo.Message
+	for {
+		m, err := s.ChannelMessage(channelID, messageID)
+		if err != nil {
+			return nil, err
+		}
+		messages = append([]*discordgo.Message{m}, messages...)
+		if m.MessageReference == nil {
+			break
+		}
+		channelID = m.MessageReference.ChannelID
+		messageID = m.MessageReference.MessageID
+	}
+	return messages, nil
 }
