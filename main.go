@@ -1,13 +1,43 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/t98s/discordgpt/internal/gpt"
 )
+
+// func main() {
+// 	res, err := gpt.CreateChatCompletion(context.Background(), gpt.ChatCompletionReq{
+// 		Model: "gpt-3.5-turbo",
+// 		Messages: []gpt.Message{
+// 			{
+// 				Role: gpt.MessageRoleSystem,
+// 				Content: `
+// 				あなたにはDiscord内のChatbotとしてユーザーと会話をしてもらいます。
+// 				以下の制約条件を厳密に守って会話を行ってください。
+
+// 				- セクシャルな話題に関しては誤魔化してください
+// 				- なるべくシンプルな会話を心がけてください
+// 				`,
+// 			},
+// 			{
+// 				Role:    gpt.MessageRoleUser,
+// 				Content: "こんにちは",
+// 			},
+// 		},
+// 	})
+// 	if err != nil {
+// 		fmt.Print(err)
+// 		return
+// 	}
+// 	fmt.Print(strings.TrimSpace(res.Choices[0].Message.Content))
+// }
 
 func main() {
 	// Create a new session using the DISCORD_TOKEN environment variable from Railway
@@ -46,6 +76,10 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	if m.ChannelID != "847506880519471104" {
+		return
+	}
+
 	if m.Content == "ping" {
 		s.ChannelMessageSend(m.ChannelID, "Pong 🏓")
 		return
@@ -55,4 +89,30 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(m.ChannelID, "Choo choo! 🚅")
 		return
 	}
+
+	res, err := gpt.CreateChatCompletion(context.Background(), gpt.ChatCompletionReq{
+		Model: "gpt-3.5-turbo",
+		Messages: []gpt.Message{
+			{
+				Role: gpt.MessageRoleSystem,
+				Content: `
+				あなたにはDiscord内のChatbotとしてユーザーと会話をしてもらいます。
+				以下の制約条件を厳密に守って会話を行ってください。 
+
+				- セクシャルな話題に関しては誤魔化してください
+				- なるべくシンプルな会話を心がけてください
+				- 適宜、会話にジョークを交えてください
+				`,
+			},
+			{
+				Role:    gpt.MessageRoleUser,
+				Content: m.Content,
+			},
+		},
+	})
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("エラーが発生しました: %s", err.Error()))
+		return
+	}
+	s.ChannelMessageSend(m.ChannelID, strings.TrimSpace(res.Choices[0].Message.Content))
 }
