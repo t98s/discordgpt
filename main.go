@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/t98s/discordgpt/internal/gpt"
@@ -90,7 +91,22 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	s.ChannelTyping(m.ChannelID)
+	// 処理が終わるまで別スレッドで5秒ごとに s.ChannelTyping を呼ぶ
+	done := make(chan bool)
+	defer func() {
+		done <- true
+	}()
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				s.ChannelTyping(m.ChannelID)
+				time.Sleep(5 * time.Second)
+			}
+		}
+	}()
 
 	replyTree, _ := getReplyTree(s, m.ChannelID, m.ID)
 	messagesForGpt := []gpt.Message{
