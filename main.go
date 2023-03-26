@@ -90,6 +90,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	s.ChannelTyping(m.ChannelID)
+
 	replyTree, _ := getReplyTree(s, m.ChannelID, m.ID)
 	messagesForGpt := []gpt.Message{
 		{
