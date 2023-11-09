@@ -13,33 +13,6 @@ import (
 	"github.com/t98s/discordgpt/internal/gpt"
 )
 
-// func main() {
-// 	res, err := gpt.CreateChatCompletion(context.Background(), gpt.ChatCompletionReq{
-// 		Model: "gpt-3.5-turbo",
-// 		Messages: []gpt.Message{
-// 			{
-// 				Role: gpt.MessageRoleSystem,
-// 				Content: `
-// 				あなたにはDiscord内のChatbotとしてユーザーと会話をしてもらいます。
-// 				以下の制約条件を厳密に守って会話を行ってください。
-
-// 				- セクシャルな話題に関しては誤魔化してください
-// 				- なるべくシンプルな会話を心がけてください
-// 				`,
-// 			},
-// 			{
-// 				Role:    gpt.MessageRoleUser,
-// 				Content: "こんにちは",
-// 			},
-// 		},
-// 	})
-// 	if err != nil {
-// 		fmt.Print(err)
-// 		return
-// 	}
-// 	fmt.Print(strings.TrimSpace(res.Choices[0].Message.Content))
-// }
-
 func main() {
 	// Create a new session using the DISCORD_TOKEN environment variable from Railway
 	dg, err := discordgo.New("Bot " + os.Getenv("DISCORD_TOKEN"))
@@ -147,7 +120,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	res, err := gpt.CreateChatCompletion(context.Background(), gpt.ChatCompletionReq{
-		Model:    "gpt-3.5-turbo",
+		Model:    "gpt-4",
 		Messages: messagesForGpt,
 	})
 	if err != nil {
