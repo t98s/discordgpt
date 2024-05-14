@@ -120,7 +120,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	res, err := gpt.CreateChatCompletion(context.Background(), gpt.ChatCompletionReq{
-		Model:    "gpt-4",
+		Model:    "gpt-4o",
 		Messages: messagesForGpt,
 	})
 	if err != nil {
